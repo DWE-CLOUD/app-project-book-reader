@@ -31,6 +31,7 @@ interface BookState {
   readingProgress: Record<string, ReadingProgress>;
   isDarkMode: boolean;
   searchQuery: string;
+  geminiApiKey: string | null;
   setCurrentBook: (book: string) => void;
   addBookmark: (book: string, page: number) => void;
   removeBookmark: (book: string, page: number) => void;
@@ -40,6 +41,7 @@ interface BookState {
   updateReadingProgress: (book: string, progress: Partial<ReadingProgress>) => void;
   toggleDarkMode: () => void;
   setSearchQuery: (query: string) => void;
+  setGeminiApiKey: (key: string) => void;
 }
 
 export const useBookStore = create<BookState>()(
@@ -53,6 +55,7 @@ export const useBookStore = create<BookState>()(
       readingProgress: {},
       isDarkMode: false,
       searchQuery: '',
+      geminiApiKey: null,
       setCurrentBook: (book) =>
         set(() => ({ currentBook: book })),
       addBookmark: (book, page) =>
@@ -101,6 +104,8 @@ export const useBookStore = create<BookState>()(
         set((state) => ({ isDarkMode: !state.isDarkMode })),
       setSearchQuery: (query) =>
         set(() => ({ searchQuery: query })),
+      setGeminiApiKey: (key) =>
+        set(() => ({ geminiApiKey: key })),
     }),
     {
       name: 'book-storage',

@@ -1,27 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import { Bookmark, ChevronLeft, ChevronRight, Upload, Search, Moon, Sun, Clock } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Document, Page } from 'react-pdf';
+import {
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Search,
+  Moon,
+  Sun,
+  Clock,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { useBookStore } from '../store/bookStore';
 import SearchBar from './SearchBar';
 import AnnotationPanel from './AnnotationPanel';
 import ReadingStats from './ReadingStats';
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-
 export default function BookReader() {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [numPages, setNumPages] = useState(0);
+  const [pageNumber, setPageNumber] = useState(1);
   const [showAnnotations, setShowAnnotations] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const { 
-    currentBook, 
-    addBookmark, 
-    bookmarks, 
+  const [scale, setScale] = useState(1);
+  const [width, setWidth] = useState(800);
+  const {
+    currentBook,
+    addBookmark,
+    bookmarks,
     removeBookmark,
     isDarkMode,
     toggleDarkMode,
-    updateReadingProgress
+    updateReadingProgress,
   } = useBookStore();
+
+  const updateWidth = useCallback(() => {
+    const container = document.getElementById('pdf-container');
+    if (container) {
+      setWidth(container.offsetWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [updateWidth]);
 
   useEffect(() => {
     let startTime = Date.now();
@@ -33,9 +57,9 @@ export default function BookReader() {
         });
       }
     };
-  }, [currentBook, pageNumber]);
-  
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+  }, [currentBook, pageNumber, updateReadingProgress]);
+
+  const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
     if (currentBook) {
       updateReadingProgress(currentBook, {
@@ -45,7 +69,8 @@ export default function BookReader() {
     }
   };
 
-  const isBookmarked = currentBook && bookmarks[currentBook]?.includes(pageNumber);
+  const isBookmarked =
+    currentBook && bookmarks[currentBook]?.includes(pageNumber);
 
   const toggleBookmark = () => {
     if (!currentBook) return;
@@ -56,102 +81,175 @@ export default function BookReader() {
     }
   };
 
+  const adjustScale = (delta) => {
+    setScale((prev) => Math.max(0.5, Math.min(2, prev + delta)));
+  };
+
   if (!currentBook) {
     return (
-      <div className={`flex flex-col items-center justify-center h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50'}`}>
+      <div
+        className={`flex flex-col items-center justify-center h-[calc(100vh-2rem)] ${
+          isDarkMode ? 'bg-gray-800' : 'bg-white'
+        } rounded-lg shadow-lg`}
+      >
         <div className="text-center">
-          <Upload className="w-16 h-16 mx-auto text-blue-500 mb-4" />
-          <p className="text-xl">No book selected</p>
-          <p className="text-sm text-gray-400 mt-2">Upload a PDF to start reading</p>
+          <Upload
+            className={`w-16 h-16 mx-auto mb-4 ${
+              isDarkMode ? 'text-blue-400' : 'text-blue-500'
+            }`}
+          />
+          <p
+            className={`text-xl ${isDarkMode ? 'text-white' : 'text-gray-800'}`}
+          >
+            No book selected
+          </p>
+          <p
+            className={`text-sm mt-2 ${
+              isDarkMode ? 'text-gray-400' : 'text-gray-500'
+            }`}
+          >
+            Upload a PDF to start reading
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`flex flex-col items-center min-h-screen p-4 transition-colors duration-200 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>
-      <div className={`w-full max-w-6xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl p-6`}>
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
-              disabled={pageNumber <= 1}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} disabled:opacity-50 transition-colors`}
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            
-            <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              Page {pageNumber} of {numPages}
-            </span>
-            
-            <button
-              onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
-              disabled={pageNumber >= numPages}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} disabled:opacity-50 transition-colors`}
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </div>
+    <div
+      className={`flex flex-col min-h-[calc(100vh-2rem)] transition-colors duration-200 ${
+        isDarkMode ? 'bg-gray-800' : 'bg-white'
+      } rounded-lg shadow-lg`}
+    >
+      <div className="flex justify-between items-center p-4 border-b border-gray-200">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setPageNumber(Math.max(1, pageNumber - 1))}
+            disabled={pageNumber <= 1}
+            className={`p-2 rounded-full ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            } disabled:opacity-50 transition-colors`}
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
 
-          <div className="flex items-center space-x-3">
-            <SearchBar />
-            
+          <span
+            className={`text-sm ${
+              isDarkMode ? 'text-gray-300' : 'text-gray-600'
+            }`}
+          >
+            Page {pageNumber} of {numPages}
+          </span>
+
+          <button
+            onClick={() => setPageNumber(Math.min(numPages, pageNumber + 1))}
+            disabled={pageNumber >= numPages}
+            className={`p-2 rounded-full ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            } disabled:opacity-50 transition-colors`}
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+
+          <div className="flex items-center space-x-2">
             <button
-              onClick={toggleBookmark}
-              className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                isBookmarked ? 'text-blue-500' : isDarkMode ? 'text-gray-300' : 'text-gray-500'
+              onClick={() => adjustScale(-0.1)}
+              className={`p-2 rounded-full ${
+                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
               }`}
             >
-              <Bookmark className="w-6 h-6" />
+              <ZoomOut className="w-5 h-5" />
             </button>
-
-            <button
-              onClick={() => setShowAnnotations(!showAnnotations)}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
+            <span
+              className={`text-sm ${
+                isDarkMode ? 'text-gray-300' : 'text-gray-600'
+              }`}
             >
-              <Search className="w-6 h-6" />
-            </button>
-
+              {Math.round(scale * 100)}%
+            </span>
             <button
-              onClick={() => setShowStats(!showStats)}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
+              onClick={() => adjustScale(0.1)}
+              className={`p-2 rounded-full ${
+                isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+              }`}
             >
-              <Clock className="w-6 h-6" />
-            </button>
-
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
-            >
-              {isDarkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+              <ZoomIn className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        <div className="flex gap-6">
-          <div className="flex-1">
-            <Document
-              file={currentBook}
-              onLoadSuccess={onDocumentLoadSuccess}
-              className={`max-w-full ${isDarkMode ? 'filter invert' : ''}`}
-            >
-              <Page
-                pageNumber={pageNumber}
-                renderTextLayer={true}
-                className="shadow-xl rounded-lg"
-              />
-            </Document>
-          </div>
+        <div className="flex items-center space-x-3">
+          <SearchBar />
 
-          {showAnnotations && (
-            <AnnotationPanel pageNumber={pageNumber} />
-          )}
+          <button
+            onClick={toggleBookmark}
+            className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+              isBookmarked
+                ? 'text-blue-500'
+                : isDarkMode
+                ? 'text-gray-300'
+                : 'text-gray-500'
+            }`}
+          >
+            <Bookmark className="w-6 h-6" />
+          </button>
 
-          {showStats && (
-            <ReadingStats />
-          )}
+          <button
+            onClick={() => setShowAnnotations(!showAnnotations)}
+            className={`p-2 rounded-full ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            } transition-colors`}
+          >
+            <Search className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => setShowStats(!showStats)}
+            className={`p-2 rounded-full ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            } transition-colors`}
+          >
+            <Clock className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={toggleDarkMode}
+            className={`p-2 rounded-full ${
+              isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+            } transition-colors`}
+          >
+            {isDarkMode ? (
+              <Sun className="w-6 h-6" />
+            ) : (
+              <Moon className="w-6 h-6" />
+            )}
+          </button>
         </div>
+      </div>
+
+      <div className="flex flex-1 gap-6 p-4">
+        <div id="pdf-container" className="flex-1 overflow-auto">
+          <Document
+            file={currentBook}
+            onLoadSuccess={onDocumentLoadSuccess}
+            className={`max-w-full ${isDarkMode ? 'filter invert' : ''}`}
+          >
+            <Page
+              pageNumber={pageNumber}
+              renderTextLayer={true}
+              className="mx-auto"
+              width={width * 0.8}
+              scale={scale}
+            />
+          </Document>
+        </div>
+
+        {(showAnnotations || showStats) && (
+          <div className="flex flex-col gap-4 w-80">
+            {showAnnotations && <AnnotationPanel pageNumber={pageNumber} />}
+            {showStats && <ReadingStats />}
+          </div>
+        )}
       </div>
     </div>
   );
